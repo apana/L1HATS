@@ -101,9 +101,12 @@ void RateExample::bookHistograms(){
 
   // rate histograms
   hRates["HTT"] = new TH1F("HTT","HTT; HTT (GeV); Integrated Rate [kHz]",512,-.5,511.5);
-  hRates["HTM"] = new TH1F("HTM","HTM; HTM (GeV); Integrated Rate [kHz]",512,-.5,511.5);
-  hRates["ETT"] = new TH1F("ETT","ETT; ETT (GeV); Integrated Rate [kHz]",512,-.5,511.5);
+  hRates["HTM"] = new TH1F("HTM","HTM; HTM (GeV); Integrated Rate [kHz]",150,-.5,149.5);
+  hRates["ETT"] = new TH1F("ETT","ETT; ETT (GeV); Integrated Rate [kHz]",150,-.5,149.5);
   hRates["ETM"] = new TH1F("ETM","ETM; ETM (GeV); Integrated Rate [kHz]",512,-.5,511.5);
+
+  hRates["EG"] = new TH1F("EG","EG; EG (GeV); Integrated Rate [kHz]",100,-.5,99.5);
+  hRates["IsoEG"] = new TH1F("IsoEG","IsoEG; IsoEG (GeV); Integrated Rate [kHz]",100,-.5,99.5);  
   
 }
 
@@ -194,8 +197,25 @@ void RateExample::loop(int maxEvents){
     if (TheETT>0.5) hRates["ETT"]->Fill(TheETT);
     if (TheETM>0.5) hRates["ETM"]->Fill(TheETM);
     if (TheHTT>0.5) hRates["HTT"]->Fill(TheHTT);
-    if (TheHTM>0.5) hRates["HTM"]->Fill(TheHTM);    
+    if (TheHTM>0.5) hRates["HTM"]->Fill(TheHTM);
+
+
+    //EG rates
+    double EGEt(-10.), isoEGEt(-10.);
+    for (UInt_t ue=0; ue < upgrade_->nEGs; ue++){
+      Int_t bx = upgrade_->egBx.at(ue);        		
+      if(bx != 0) continue;
+      Float_t pt  = upgrade_->egEt.at(ue);
+      if (pt>EGEt)EGEt=pt;
+      if (upgrade_->egIso.at(ue)){
+	if (pt>isoEGEt)isoEGEt=pt;
+      }
+    }  // end loop over EM objects
+    if (EGEt>0.5) hRates["EG"]->Fill(EGEt);
+    if (isoEGEt>0.5) hRates["IsoEG"]->Fill(isoEGEt);
+    
   }
+  
   Nevts=i;
   std::cout << "\nDone with event loop. Processed: " << Nevts << " events" << std::endl;
 }
