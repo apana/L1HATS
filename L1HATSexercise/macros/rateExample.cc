@@ -38,10 +38,12 @@ class RateExample: public L1Ntuple
 {
 public:
   // constructor
-  RateExample(std::string infiles, std::string outfile){
+  RateExample(std::string infiles, std::string outfile, float JetThresh){
     
     SelBx=0; // look at bunch crossing 0
     Nevts=0;
+    jetThreshold=JetThresh;
+    
     std::cout << "Writing output to: " << outfile << std::endl;
     outrootfile =  new TFile( outfile.c_str(), "RECREATE");
     
@@ -66,10 +68,12 @@ public:
   
   int GetSumEtIdx( EtSumType );
   double SumETVal( EtSumType );
+  bool checkPFJetID(int);
   
 private:
   int SelBx, Nevts;
-  std::map<std::string,TH1F*> hTH1Fs,hRates;
+  double jetThreshold;
+  std::map<std::string,TH1F*> hTH1Fs,hRates,hEffs;
   TFile        *outrootfile;  
 };
 
@@ -83,6 +87,20 @@ int RateExample::GetSumEtIdx(EtSumType type)
   return -1;
 }       // -----  end of function L1AlgoFactory::GetSumEtIdx  -----
 
+
+bool RateExample::checkPFJetID(int ijet){
+  bool jid=false;
+  double chf   = recoJet_->chef.at(ijet);
+  double nhf   = recoJet_->nhef.at(ijet);
+  double phf   = recoJet_->pef.at(ijet);
+  double elf   = recoJet_->eef.at(ijet);
+  double chm   = recoJet_->chMult.at(ijet);
+  int npr   = recoJet_->cMult.at(ijet) + recoJet_->nMult.at(ijet);
+
+  jid  = (npr>1 && phf<0.99 && nhf<0.99 && ((fabs(recoJet_->eta.at(ijet))<=2.4 && elf<0.99 && chf>0 && chm>0) || fabs(recoJet_->eta.at(ijet))>2.4)) ;
+  return jid;
+  
+}
 
 double RateExample::SumETVal( EtSumType type ) {
 
@@ -105,9 +123,14 @@ void RateExample::bookHistograms(){
   hRates["ETT"] = new TH1F("ETT","ETT; ETT (GeV); Integrated Rate [kHz]",150,-.5,149.5);
   hRates["ETM"] = new TH1F("ETM","ETM; ETM (GeV); Integrated Rate [kHz]",512,-.5,511.5);
 
+  hRates["JET"] = new TH1F("JET","JET; JET (GeV); Integrated Rate [kHz]",512,-.5,511.5);
+
   hRates["EG"] = new TH1F("EG","EG; EG (GeV); Integrated Rate [kHz]",100,-.5,99.5);
   hRates["IsoEG"] = new TH1F("IsoEG","IsoEG; IsoEG (GeV); Integrated Rate [kHz]",100,-.5,99.5);  
-  
+
+  // Efficiency histograms
+  hEffs["RecoJetPt"] = new TH1F("RecoJetPt","JetPt; JetPt (GeV) ",512,-.5,511.5);
+  hEffs["RecoJetPtTrg"] = new TH1F("RecoJetPtTrg","JetPtTrg; JetPt (GeV) ",512,-.5,511.5);
 }
 
 void RateExample::scaleHistograms(int nBunches) 
@@ -159,6 +182,11 @@ void RateExample::writeHistograms()
     h.second->Write();
   }
 
+  for(auto h : hEffs)
+  {
+    h.second->Write();
+  }
+  
   return;
 }       // -----  end of function L1Menu2016::WriteHistogram  -----
 
@@ -213,7 +241,29 @@ void RateExample::loop(int maxEvents){
     }  // end loop over EM objects
     if (EGEt>0.5) hRates["EG"]->Fill(EGEt);
     if (isoEGEt>0.5) hRates["IsoEG"]->Fill(isoEGEt);
-    
+
+    //Jet rates
+    double JetEt(-10.);
+    for (UInt_t ue=0; ue < upgrade_->nJets; ue++){
+      Int_t bx = upgrade_->jetBx.at(ue);        		
+      if(bx != 0) continue;
+      Float_t pt  = upgrade_->jetEt.at(ue);
+      if (pt>JetEt)JetEt=pt;
+    }  // end loop over EM objects    
+
+    // Now simple Jet Efficiency
+    if (doRecoJet && recoJet_->nJets > 0 ){
+      // check leading jet et
+      bool goodJet=checkPFJetID(0);
+      if (goodJet){
+	double ptL=recoJet_->etCorr.at(0);
+	hEffs["RecoJetPt"]->Fill(ptL);
+	//std::cout << "recoJet:" << recoJet_->etCorr.at(0) << std::endl;
+	if (JetEt>jetThreshold){
+	  hEffs["RecoJetPtTrg"]->Fill(ptL);
+	}
+      }
+    }
   }
   
   Nevts=i;
@@ -234,7 +284,8 @@ int main(int argc, char *argv[])
     ("filelist,l",    po::value<std::string>()->default_value(defaultntuple), "set the input ntuple list")
     ("outfilename,o", po::value<std::string>()->default_value(defaultoutput), "set output file name")
     ("maxEvent,n",    po::value<int>()->default_value(-1),                    "run number of events; -1 for all")
-    ("nBunches,b",    po::value<int>()->default_value(1),                     "set number of bunches")    
+    ("nBunches,b",    po::value<int>()->default_value(1),                     "set number of bunches")
+    ("jetThreshold",   po::value<float>()->default_value(120),                     "jet threshold for efficiency")    
     ;
 
 
@@ -249,10 +300,11 @@ int main(int argc, char *argv[])
 
   int nevts   =vm["maxEvent"].as<int>();
   int nBunches=vm["nBunches"].as<int>();
+  double jetThreshold=vm["jetThreshold"].as<float>();
   std::string inFiles=vm["filelist"].as<std::string>();
   std::string outFile=vm["outfilename"].as<std::string>();
 
-  RateExample myRates(inFiles,outFile);
+  RateExample myRates(inFiles,outFile,jetThreshold);
 
   myRates.bookHistograms();    
   myRates.loop(nevts);
