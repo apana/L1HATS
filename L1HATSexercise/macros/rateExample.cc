@@ -162,7 +162,8 @@ void RateExample::integrateRate()
       double fint=h.second->IntegralAndError(ibin1,ibin2,err);
 
       h.second->SetBinContent(ibin+1,fint);
-      h.second->SetBinError(ibin+1,err);
+      //h.second->SetBinError(ibin+1,err);  // error bars looking weird in integrated plot
+      h.second->SetBinError(ibin+1,0.);
     }
   }
 
