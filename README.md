@@ -4,8 +4,8 @@ Git repository for L1 HATS tutorial
 ### Setup CMSSW project area
 <pre><code>
 setenv SCRAM_ARCH slc6_amd64_gcc530
-cmsrel CMSSW_9_2_1
-cd CMSSW_9_2_1/src
+cmsrel CMSSW_9_2_2
+cd CMSSW_9_2_2/src
 cmsenv
 </code></pre>
 
@@ -28,6 +28,6 @@ make
 
 ### Run the example and plot the rates
 <pre><code>
-rateExample -n 1000000 -b 1824 -o Rates.root -l run274284.list
+rateExample -n 1000000 -b 1549 -o Rates.root -l run297100_ZeroBias_noRECO.list
 root Rates.root
 </code></pre>
