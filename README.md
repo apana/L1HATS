@@ -1,17 +1,17 @@
 # L1HATS
-Git repository for 2016 L1 HATS tutorial
+Git repository for L1 HATS tutorial
 
 ### Setup CMSSW project area
 <pre><code>
 setenv SCRAM_ARCH slc6_amd64_gcc530
-cmsrel CMSSW_8_0_8
-cd CMSSW_8_0_8/src
+cmsrel CMSSW_9_2_1
+cd CMSSW_9_2_1/src
 cmsenv
 </code></pre>
 
 ### L1Menu DPG package for menu-making
 <pre><code>
-git clone -b 2016-Tune https://github.com/cms-l1-dpg/L1Menu.git L1TriggerDPG/L1Menu
+git clone https://github.com/cms-l1-dpg/L1Menu.git L1TriggerDPG/L1Menu
 cd L1TriggerDPG/L1Menu
 scramv1 b -j 9
 cd macros

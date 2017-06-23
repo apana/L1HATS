@@ -27,7 +27,7 @@
 #include "L1Trigger/L1TNtuples/interface/L1AnalysisRecoMetFilterDataFormat.h"
 #include "L1Trigger/L1TNtuples/interface/L1AnalysisRecoTauDataFormat.h"
 
-enum EtSumType { 
+enum EtSumType {
   ETT = l1t::EtSum::EtSumType::kTotalEt,
   HTT = l1t::EtSum::EtSumType::kTotalHt,
   ETM = l1t::EtSum::EtSumType::kMissingEt,
@@ -39,14 +39,15 @@ class RateExample: public L1Ntuple
 public:
   // constructor
   RateExample(std::string infiles, std::string outfile, float JetThresh){
-    
+
     SelBx=0; // look at bunch crossing 0
     Nevts=0;
     jetThreshold=JetThresh;
-    
+
     std::cout << "Writing output to: " << outfile << std::endl;
     outrootfile =  new TFile( outfile.c_str(), "RECREATE");
-    
+
+    SelectTree(true);
     if (infiles.find(".root") != std::string::npos) {
       std::cout << "Reading RootFile: " << infiles << std::endl;
       Open(infiles);
@@ -65,16 +66,16 @@ public:
   void writeHistograms();
   void scaleHistograms(int);
   void integrateRate();
-  
+
   int GetSumEtIdx( EtSumType );
   double SumETVal( EtSumType );
   bool checkPFJetID(int);
-  
+
 private:
   int SelBx, Nevts;
   double jetThreshold;
   std::map<std::string,TH1F*> hTH1Fs,hRates,hEffs;
-  TFile        *outrootfile;  
+  TFile        *outrootfile;
 };
 
 int RateExample::GetSumEtIdx(EtSumType type)
@@ -99,7 +100,7 @@ bool RateExample::checkPFJetID(int ijet){
 
   jid  = (npr>1 && phf<0.99 && nhf<0.99 && ((fabs(recoJet_->eta.at(ijet))<=2.4 && elf<0.99 && chf>0 && chm>0) || fabs(recoJet_->eta.at(ijet))>2.4)) ;
   return jid;
-  
+
 }
 
 double RateExample::SumETVal( EtSumType type ) {
@@ -126,21 +127,21 @@ void RateExample::bookHistograms(){
   hRates["JET"] = new TH1F("JET","JET; JET (GeV); Integrated Rate [kHz]",512,-.5,511.5);
 
   hRates["EG"] = new TH1F("EG","EG; EG (GeV); Integrated Rate [kHz]",100,-.5,99.5);
-  hRates["IsoEG"] = new TH1F("IsoEG","IsoEG; IsoEG (GeV); Integrated Rate [kHz]",100,-.5,99.5);  
+  hRates["IsoEG"] = new TH1F("IsoEG","IsoEG; IsoEG (GeV); Integrated Rate [kHz]",100,-.5,99.5);
 
   // Efficiency histograms
   hEffs["RecoJetPt"] = new TH1F("RecoJetPt","JetPt; JetPt (GeV) ",512,-.5,511.5);
   hEffs["RecoJetPtTrg"] = new TH1F("RecoJetPtTrg","JetPtTrg; JetPt (GeV) ",512,-.5,511.5);
 }
 
-void RateExample::scaleHistograms(int nBunches) 
+void RateExample::scaleHistograms(int nBunches)
 {
-  
+
   double scale = 11246.; // ZB per bunch in Hz
 
   scale /= Nevts*1000.; // in kHz
   scale *= nBunches;
-  
+
   for(auto h : hRates)
   {
     h.second->Scale(scale);
@@ -149,12 +150,12 @@ void RateExample::scaleHistograms(int nBunches)
   return;
 }       // -----  end of function L1Menu2016::WriteHistogram  -----
 
-void RateExample::integrateRate() 
+void RateExample::integrateRate()
 {
-  
+
   for(auto h : hRates)
   {
-    int nbins=h.second->GetNbinsX();    
+    int nbins=h.second->GetNbinsX();
     for (int ibin=0; ibin<nbins; ++ibin){
       int ibin1=ibin+1;
       int ibin2=nbins;
@@ -170,7 +171,7 @@ void RateExample::integrateRate()
   return;
 }       // -----  end of function L1Menu2016::WriteHistogram  -----
 
-void RateExample::writeHistograms() 
+void RateExample::writeHistograms()
 {
 
   outrootfile->cd();
@@ -187,7 +188,7 @@ void RateExample::writeHistograms()
   {
     h.second->Write();
   }
-  
+
   return;
 }       // -----  end of function L1Menu2016::WriteHistogram  -----
 
@@ -196,33 +197,33 @@ void RateExample::loop(int maxEvents){
   int i=0;
   while(true)
   {
-    Long64_t ientry = LoadTree(i); 
+    Long64_t ientry = LoadTree(i);
     if (ientry < 0) break;
-      
+
     GetEntry(i); i++;
     if (maxEvents>0 && i>=maxEvents) break;
 
-    
+
     if (i<0)  //first n events
-      { 
+      {
     std::cout << "--------------------- Event "<<i<<" ---------------------"<<std::endl;
     //event_
     std::cout << "L1Tree         : event_->run =\t"<<event_->run<< std::endl;
     std::cout << "L1Tree         : event_->event =\t"<<event_->event<<std::endl;
-    
+
     std::cout << "\nL1Tree:        : upgrade_->nJets=\t" <<  upgrade_->nJets << std::endl;
     }
     if (i % 200000 == 0)
       std::cout << "Processed " << i << " events." << std::endl;
 
     hTH1Fs["NEV"]->Fill(0.);
-    
+
     double TheETT(-10),TheETM(-10),TheHTT(-10),TheHTM(-10);
     TheETT =SumETVal( EtSumType::ETT );
     TheETM =SumETVal( EtSumType::ETM );
     TheHTT =SumETVal( EtSumType::HTT );
     TheHTM =SumETVal( EtSumType::HTM );
-    
+
     if (TheETT>0.5) hRates["ETT"]->Fill(TheETT);
     if (TheETM>0.5) hRates["ETM"]->Fill(TheETM);
     if (TheHTT>0.5) hRates["HTT"]->Fill(TheHTT);
@@ -232,7 +233,7 @@ void RateExample::loop(int maxEvents){
     //EG rates
     double EGEt(-10.), isoEGEt(-10.);
     for (UInt_t ue=0; ue < upgrade_->nEGs; ue++){
-      Int_t bx = upgrade_->egBx.at(ue);        		
+      Int_t bx = upgrade_->egBx.at(ue);
       if(bx != 0) continue;
       Float_t pt  = upgrade_->egEt.at(ue);
       if (pt>EGEt)EGEt=pt;
@@ -246,11 +247,12 @@ void RateExample::loop(int maxEvents){
     //Jet rates
     double JetEt(-10.);
     for (UInt_t ue=0; ue < upgrade_->nJets; ue++){
-      Int_t bx = upgrade_->jetBx.at(ue);        		
+      Int_t bx = upgrade_->jetBx.at(ue);
       if(bx != 0) continue;
       Float_t pt  = upgrade_->jetEt.at(ue);
       if (pt>JetEt)JetEt=pt;
-    }  // end loop over EM objects    
+    }  // end loop over EM objects
+    if (JetEt>0.5) hRates["JET"]->Fill(JetEt);
 
     // Now simple Jet Efficiency
     if (doRecoJet && recoJet_->nJets > 0 ){
@@ -266,7 +268,7 @@ void RateExample::loop(int maxEvents){
       }
     }
   }
-  
+
   Nevts=i;
   std::cout << "\nDone with event loop. Processed: " << Nevts << " events" << std::endl;
 }
@@ -286,13 +288,13 @@ int main(int argc, char *argv[])
     ("outfilename,o", po::value<std::string>()->default_value(defaultoutput), "set output file name")
     ("maxEvent,n",    po::value<int>()->default_value(-1),                    "run number of events; -1 for all")
     ("nBunches,b",    po::value<int>()->default_value(1),                     "set number of bunches")
-    ("jetThreshold",   po::value<float>()->default_value(120),                     "jet threshold for efficiency")    
+    ("jetThreshold",   po::value<float>()->default_value(120),                     "jet threshold for efficiency")
     ;
 
 
   po::variables_map vm;
   po::store(po::parse_command_line(argc, argv, desc), vm);
-  po::notify(vm);    
+  po::notify(vm);
 
   if (vm.count("help")) {
     std::cout << desc << std::endl;
@@ -307,10 +309,10 @@ int main(int argc, char *argv[])
 
   RateExample myRates(inFiles,outFile,jetThreshold);
 
-  myRates.bookHistograms();    
+  myRates.bookHistograms();
   myRates.loop(nevts);
   myRates.scaleHistograms(nBunches);
   myRates.integrateRate();
-  
+
 
 }
