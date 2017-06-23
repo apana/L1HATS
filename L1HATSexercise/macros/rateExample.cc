@@ -195,6 +195,10 @@ void RateExample::writeHistograms()
 void RateExample::loop(int maxEvents){
 
   int i=0;
+  int nzerobias=0;
+  int ilumi=0;
+  int olumi=-1;
+
   while(true)
   {
     Long64_t ientry = LoadTree(i);
@@ -216,6 +220,16 @@ void RateExample::loop(int maxEvents){
     if (i % 200000 == 0)
       std::cout << "Processed " << i << " events." << std::endl;
 
+    bool ZeroBias = l1uGT_->getAlgoDecisionInitial(458)  == 1;
+    if ( not ZeroBias ) continue;
+    nzerobias++;
+
+
+    ilumi=event_->lumi;
+    if (ilumi != olumi){
+      olumi=ilumi;
+      //std::cout << "\tProcessing lumi section number " << ilumi << std::endl;
+    }
     hTH1Fs["NEV"]->Fill(0.);
 
     double TheETT(-10),TheETM(-10),TheHTT(-10),TheHTM(-10);
@@ -269,8 +283,10 @@ void RateExample::loop(int maxEvents){
     }
   }
 
-  Nevts=i;
-  std::cout << "\nDone with event loop. Processed: " << Nevts << " events" << std::endl;
+  //Nevts=i;
+  Nevts=nzerobias;
+  std::cout << "\nDone with event loop. Processed: " << Nevts << " events." << " Number of ZeroBias triggers: " << nzerobias << std::endl;
+  //std::cout << "\nDone with event loop. Processed: " << Nevts << " events." << std::endl;
 }
 using std::vector;
 int main(int argc, char *argv[])
