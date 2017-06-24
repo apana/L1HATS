@@ -61,7 +61,7 @@ public:
     outrootfile->Close();
     std::cout << "Program execution terminated" << std::endl;
   }
-  void loop(int);
+  void loop(int,int);
   void bookHistograms();
   void writeHistograms();
   void scaleHistograms(int);
@@ -192,12 +192,14 @@ void RateExample::writeHistograms()
   return;
 }       // -----  end of function L1Menu2016::WriteHistogram  -----
 
-void RateExample::loop(int maxEvents){
+void RateExample::loop(int maxEvents, int triggerBit){
 
   int i=0;
-  int nzerobias=0;
+  int nTrig=0;
   int ilumi=0;
   int olumi=-1;
+
+  bool selectTrigger=triggerBit>=0;
 
   while(true)
   {
@@ -220,9 +222,11 @@ void RateExample::loop(int maxEvents){
     if (i % 200000 == 0)
       std::cout << "Processed " << i << " events." << std::endl;
 
-    bool ZeroBias = l1uGT_->getAlgoDecisionInitial(458)  == 1;
-    if ( not ZeroBias ) continue;
-    nzerobias++;
+    if (triggerBit>=0){
+      bool BitFired = l1uGT_->getAlgoDecisionInitial(triggerBit)  == 1;
+      if ( not BitFired ) continue;
+    }
+    nTrig++;
 
 
     ilumi=event_->lumi;
@@ -283,10 +287,12 @@ void RateExample::loop(int maxEvents){
     }
   }
 
-  //Nevts=i;
-  Nevts=nzerobias;
-  std::cout << "\nDone with event loop. Processed: " << Nevts << " events." << " Number of ZeroBias triggers: " << nzerobias << std::endl;
-  //std::cout << "\nDone with event loop. Processed: " << Nevts << " events." << std::endl;
+  Nevts=i;
+  std::cout << "\nDone with event loop. Processed: " << Nevts << " events." << std::endl;
+  if (selectTrigger){
+    std::cout << " Number of events selected by trigger: " << nTrig << std::endl;
+    Nevts=nTrig;
+  }
 }
 using std::vector;
 int main(int argc, char *argv[])
@@ -304,7 +310,8 @@ int main(int argc, char *argv[])
     ("outfilename,o", po::value<std::string>()->default_value(defaultoutput), "set output file name")
     ("maxEvent,n",    po::value<int>()->default_value(-1),                    "run number of events; -1 for all")
     ("nBunches,b",    po::value<int>()->default_value(1),                     "set number of bunches")
-    ("jetThreshold",   po::value<float>()->default_value(120),                     "jet threshold for efficiency")
+    ("triggerBit",    po::value<int>()->default_value(-1),                     "select trigger bit. If negative no selection")
+    ("jetThreshold",  po::value<float>()->default_value(120),                 "jet threshold for efficiency")
     ;
 
 
@@ -319,6 +326,7 @@ int main(int argc, char *argv[])
 
   int nevts   =vm["maxEvent"].as<int>();
   int nBunches=vm["nBunches"].as<int>();
+  int triggerBit=vm["triggerBit"].as<int>();
   double jetThreshold=vm["jetThreshold"].as<float>();
   std::string inFiles=vm["filelist"].as<std::string>();
   std::string outFile=vm["outfilename"].as<std::string>();
@@ -326,7 +334,7 @@ int main(int argc, char *argv[])
   RateExample myRates(inFiles,outFile,jetThreshold);
 
   myRates.bookHistograms();
-  myRates.loop(nevts);
+  myRates.loop(nevts,triggerBit);
   myRates.scaleHistograms(nBunches);
   myRates.integrateRate();
 
